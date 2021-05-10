@@ -825,13 +825,6 @@ $('#genericModal').on('show.bs.modal', function (event) {
                         
                         modal.find('#update_location_project_form').submit(function (event) {
                             event.preventDefault();
-        
-                            modal.find('#items').children().each(function (i) {
-                                $(this).find('input, textarea, select').each(function () {
-                                    $(this).attr('name', $(this).attr('name').replace(/\[[0-9]+\]/g, '[' + i + ']'));
-                                });
-                            });
-        
                             $.ajax({
                                 url: '/1.1/update_location_project',
                                 type: 'post',
@@ -924,6 +917,36 @@ $('#genericModal').on('show.bs.modal', function (event) {
                     modal.find('.modal-title').text("Editar");
                     modal.find("#modal_content").load('/1.1/edit_related_projects.html', { related_projects_id: id},function(){
                         
+                        modal.find('[name="relatedProject_title"]').autocomplete({
+                            minLength: 0,
+                            source: function(request, response) {
+                                modal.find('[name="relatedProject_identifier"]').val('');
+                                modal.find('[name="relatedProject_uri"]').val('');                                
+                                $.post('/search-projects', { search: request.term }).done(function(data) {
+                                    if (data.length == 0) {
+                                        modal.find('[name="relatedProject_title"]').val('');
+                                    }
+                                    response(data);
+                                });
+                            },
+                            close: function (e) {
+                                if (modal.find('[name="url"]').val() == '') {
+                                    modal.find('[name="relatedProject_title"]').val('');
+                                }
+                            },
+                            select: function(event, ui) {
+                                modal.find('[name="relatedProject_identifier"]').val(ui.item.projects[0].title);
+                                modal.find('[name="relatedProject_title"]').val(ui.item.projects[0].oc4idsIdentifier);
+                                modal.find('[name="relatedProject_uri"]').val(ui.item.uri);
+                                return false;
+                            }
+                        }).autocomplete('instance')._renderItem = function (ul, item) {
+                            return $('<li>')
+                                .data('item.autocomplete', item)
+                                .append('<div>' + item.projects[0].oc4ids+'-'+item.projects[0].identifier + '</div>')
+                                .appendTo(ul);
+                        };
+
                         $('#update_related_project_form').submit(function (e) {
                             $.post('/1.1/update_related_project', $(this).serialize()).done(function (data) {
                                 alert( data.description );
@@ -931,7 +954,7 @@ $('#genericModal').on('show.bs.modal', function (event) {
                             });
                             e.preventDefault();
                         });
-                     });
+                    });
                 }),
                 $('button[name="delete_related_projects"]').click(function () {
                     if (confirm("¿Está seguro de eliminar el registro?")){
@@ -1549,14 +1572,14 @@ $('#genericModal').on('show.bs.modal', function (event) {
                     locale: 'es',
                     format: 'YYYY-MM-DD'
                 }).on("dp.change", function (e) {
-                    modal.find('#newguarantee_date2').data("DateTimePicker").minDate(e.date);
+                    // modal.find('#newguarantee_date2').data("DateTimePicker").minDate(e.date);
                 });
 
                 modal.find('#newguarantee_date2').datetimepicker({
                     locale: 'es',
                     format: 'YYYY-MM-DD'
                 }).on("dp.change", function (e) {
-                    modal.find('#newguarantee_date1').data("DateTimePicker").maxDate(e.date);
+                    // modal.find('#newguarantee_date1').data("DateTimePicker").maxDate(e.date);
                 });
 
                 modal.find('#newguarantee_form').submit(function (event) {
@@ -1792,37 +1815,6 @@ $('#genericModal').on('show.bs.modal', function (event) {
             modal.find('#modal_content').load('/add-location-project', {
                 project_id: button.data('project_id')
             }, function () {
-                // Agrega nuevos items a las coordenadas
-                modal.off('click', '[data-action="add_item"]');
-                modal.on('click', '[data-action="add_item"]', function (e) {
-                    e.preventDefault();
-                    var template = modal.find('#itemTemplate').html();
-
-                    var index = new Date().getTime();
-                    template = template.replace(/\[0\]/g, '[' + index + ']');
-
-                    var content = $(template).appendTo(modal.find('#items'));
-                    initItem(content);
-                    updateSelectedItem();
-                });
-
-                // Elimina items de las coordenadas
-                modal.on('click', '[data-dismiss="item"]', function (e) {
-                    e.preventDefault();
-
-                    $(this).parent().remove();
-
-                    if (modal.find('#items').children().length == 0) {
-                        var template = modal.find('#itemTemplate').html();
-
-                        var index = new Date().getTime();
-                        template = template.replace(/\[0\]/g, '[' + index + ']');
-
-                        var content = $(template).appendTo(modal.find('#items'));
-                    }
-                    updateSelectedItem();
-                });
-                
                 modal.find('#add_location_project_form').submit(function (event) {
                     event.preventDefault();
 
@@ -1886,7 +1878,6 @@ $('#genericModal').on('show.bs.modal', function (event) {
                 modal.find('[name="relatedProject_title"]').autocomplete({
                     minLength: 0,
                     source: function(request, response) {
-                        modal.find('[name="relatedProject_scheme"]').val('');
                         modal.find('[name="relatedProject_identifier"]').val('');
                         modal.find('[name="relatedProject_uri"]').val('');
 
@@ -1903,16 +1894,16 @@ $('#genericModal').on('show.bs.modal', function (event) {
                         }
                     },
                     select: function(event, ui) {
-                        console.log("@@@ UI " + JSON.stringify(ui))
-                        // modal.find('[name="relatedProject_title"]').val(ui.item.identifier);
-                        // modal.find('[name="url"]').val(ui.item.record);
+                        modal.find('[name="relatedProject_identifier"]').val(ui.item.projects[0].title);
+                        modal.find('[name="relatedProject_title"]').val(ui.item.projects[0].oc4idsIdentifier);
+                        modal.find('[name="relatedProject_uri"]').val(ui.item.uri);
                         return false;
                     }
                 }).autocomplete('instance')._renderItem = function (ul, item) {
                     return $('<li>')
-                      .data('item.autocomplete', item)
-                      .append('<div>' + item.identifier + '</div>')
-                      .appendTo(ul);
+                        .data('item.autocomplete', item)
+                        .append('<div>' + item.projects[0].oc4ids+'-'+item.projects[0].identifier + '</div>')
+                        .appendTo(ul);
                 };
 
                 modal.find('#add_related_projects_form').submit(function (event) {
@@ -2097,14 +2088,14 @@ $('#genericModal').on('show.bs.modal', function (event) {
                     locale: 'es',
                     format: 'YYYY-MM-DD'
                 }).on("dp.change", function (e) {
-                    modal.find('#newguarantee_date2').data("DateTimePicker").minDate(e.date);
+                    // modal.find('#newguarantee_date2').data("DateTimePicker").minDate(e.date);
                 });
 
                 modal.find('#newguarantee_date2').datetimepicker({
                     locale: 'es',
                     format: 'YYYY-MM-DD'
                 }).on("dp.change", function (e) {
-                    modal.find('#newguarantee_date1').data("DateTimePicker").maxDate(e.date);
+                    // modal.find('#newguarantee_date1').data("DateTimePicker").maxDate(e.date);
                 });
 
                 modal.find('#editguarantee_form').submit(function (event) {
